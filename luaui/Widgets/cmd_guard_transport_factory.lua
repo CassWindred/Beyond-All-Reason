@@ -62,20 +62,8 @@ local pendingGuardTransports = {}  -- transportID -> factoryID (queued but not y
 local orderedUnitsBlacklist = {}
 local blacklistOrderedUnits = false
 
-for id, def in pairs(UnitDefs) do
-	cachedUnitDefs[id] = {
-		translatedHumanName = def.translatedHumanName,
-		isTransport         = def.isTransport,
-		isFactory           = def.isFactory,
-		mass                = def.mass,
-		transportMass       = def.transportMass,
-		speed               = def.speed,
-		transportCapacity   = def.transportCapacity,
-		cantBeTransported   = def.cantBeTransported,
-		transportSize       = def.transportSize,
-		xsize               = def.xsize
-    }
-end
+local unitUtils = VFS.Include("luaui/Include/Utilities/unit_utils.lua")
+local canTransport = unitUtils.canTransport
 
 local spGetUnitCommandCount = Spring.GetUnitCommandCount
 local spGetUnitCurrentCommand = Spring.GetUnitCurrentCommand
@@ -312,46 +300,6 @@ local function inactivateTransport(unitID)
     end
 end
 
-local function canTransport(transportID, unitID)
-	local udef = Spring.GetUnitDefID(unitID)
-	local tdef = Spring.GetUnitDefID(transportID)
-
-	if not udef or not tdef then
-		return false
-	end
-
-    local uDefObj = cachedUnitDefs[udef]
-	local tDefObj = cachedUnitDefs[tdef]
-
-	if uDefObj.xsize > tDefObj.transportSize * Game.footprintScale then
-		return false
-	end
-
-	local trans = Spring.GetUnitIsTransporting(transportID) -- capacity check
-	if tDefObj.transportCapacity <= #trans then
-		return false
-	end
-
-	if uDefObj.cantBeTransported then
-		return false
-	end
-
-	local mass = 0 -- mass check
-	for _, a in ipairs(trans) do
-		local aDefID = Spring.GetUnitDefID(a)
-		if aDefID then
-			mass = mass + cachedUnitDefs[aDefID].mass
-		end
-	end
-	mass = mass + uDefObj.mass
-
-	if mass > tDefObj.transportMass then
-		return false
-	end
-
-	return true
-end
-
 local function removePreDestinationMoveCommands(unitID, destination)
     local tags = {}
     if not destination then return end
@@ -406,7 +354,7 @@ function widget:UnitFromFactory(unitID, unitDefID, unitTeam, factID, factDefID, 
             local createdSpeed = unitDefID_created and cachedUnitDefs[unitDefID_created] and cachedUnitDefs[unitDefID_created].speed or 0
 
             for transportID, _ in pairs(factoryToGuardingTransports[factID]) do
-                if transportState[transportID] == transport_states.idle and canTransport(transportID, createdUnitID) then
+                if transportState[transportID] == transport_states.idle and unitUtils.canTransport(transportID, createdUnitID) then
                     local unitLocation      = {Spring.GetUnitPosition(unitID)}
                     local transportLocation = {Spring.GetUnitPosition(transportID)}
 
