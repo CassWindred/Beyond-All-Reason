@@ -207,6 +207,8 @@ if not math.isPointInArea then
 end
 
 if not math.distance2dSquared then
+	-- Squaring a number is strictly faster than taking a square root, which regular distance functions require.
+	-- So in performance sensitive code, it's better to compare squared distances than actual distances
 	function math.distance2dSquared(x1, z1, x2, z2)
 		local x = x1 - x2
 		local z = z1 - z2
